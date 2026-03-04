@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SnR QC Import",
+  "description": "Schema for notes imported from SnR QC JSONL export",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": ["string", "integer"]
+    },
+    "snr_id": {
+      "type": "string"
+    },
+    "note_id": {
+      "type": ["string", "integer"]
+    },
+    "timestamp": {
+      "type": "string"
+    },
+    "ts": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sentiment": {
+      "type": "string",
+      "enum": ["positive", "neutral", "negative"]
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "intent": {
+      "type": "string"
+    },
+    "action_items": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "people": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "summary": {
+      "type": "string"
+    },
+    "quality_score": {
+      "type": "number"
+    },
+    "semantic_coherence_score": {
+      "type": "number"
+    }
+  },
+  "anyOf": [
+    {"required": ["text"]},
+    {"required": ["content"]},
+    {"required": ["note"]}
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WeeklyRetro",
+  "description": "Weekly retrospective schema",
+  "type": "object",
+  "properties": {
+    "week_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "scoreboard": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "wins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "frictions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "root_cause": {
+      "type": ["string", "null"]
+    },
+    "one_change": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "mechanism": {
+          "type": "string"
+        },
+        "measurement": {
+          "type": "string"
+        }
+      },
+      "required": ["title", "mechanism", "measurement"]
+    },
+    "minimums": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "commitment_met": {
+      "type": ["boolean", "null"]
+    }
+  },
+  "required": ["week_start", "scoreboard", "wins", "frictions", "one_change", "minimums"]
+}

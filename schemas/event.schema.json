@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Event",
+  "description": "Structured event extracted from notes",
+  "type": "object",
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "note_id": {
+      "type": ["integer", "null"]
+    },
+    "domain": {
+      "type": ["string", "null"],
+      "enum": ["health", "career", "social", "cognition", "nature", "finance", null]
+    },
+    "event_type": {
+      "type": "string",
+      "enum": ["win", "friction", "insight", "compulsion", "avoidance"]
+    },
+    "trigger": {
+      "type": ["string", "null"]
+    },
+    "intensity": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 5
+    },
+    "behavior": {
+      "type": ["string", "null"]
+    },
+    "counterfactual": {
+      "type": ["string", "null"]
+    }
+  },
+  "required": ["ts", "event_type"]
+}

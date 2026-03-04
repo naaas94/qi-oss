@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReportOutput",
+  "description": "Schema for report artifacts",
+  "type": "object",
+  "properties": {
+    "artifact_type": {
+      "type": "string",
+      "enum": ["weekly_digest", "monthly_dossier"]
+    },
+    "window_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "window_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "input_snapshot": {
+      "type": "object",
+      "properties": {
+        "dci_count": {
+          "type": "integer"
+        },
+        "retro_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "features_snapshot": {
+      "type": "object",
+      "properties": {
+        "energy_mean": {
+          "type": ["number", "null"]
+        },
+        "mood_mean": {
+          "type": ["number", "null"]
+        },
+        "sleep_mean": {
+          "type": ["number", "null"]
+        },
+        "habit_streak": {
+          "type": "integer"
+        },
+        "win_count": {
+          "type": "integer"
+        },
+        "friction_count": {
+          "type": "integer"
+        },
+        "insight_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "output_json": {
+      "type": "object"
+    },
+    "rendered_markdown": {
+      "type": "string"
+    }
+  },
+  "required": ["artifact_type", "window_start", "window_end", "input_snapshot", "features_snapshot", "output_json", "rendered_markdown"]
+}

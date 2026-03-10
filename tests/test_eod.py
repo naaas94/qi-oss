@@ -67,7 +67,7 @@ def test_eod_batch_processes_items_and_counts_relevance(monkeypatch) -> None:
             )
 
     monkeypatch.setattr(eod, "OllamaClient", _Client)
-    monkeypatch.setattr(eod, "load_config", lambda: {"llm": {"enabled": True, "base_url": "http://localhost:11434"}})
+    monkeypatch.setattr(eod, "load_config", lambda: {"llm-eod": {"enabled": True, "base_url": "http://localhost:11434"}})
     monkeypatch.setattr(eod, "read_principles_markdown", lambda config=None: "# Principles")
     monkeypatch.setattr(
         eod,
@@ -112,7 +112,7 @@ def test_eod_batch_records_failures_without_crashing(monkeypatch) -> None:
             raise RuntimeError("boom")
 
     monkeypatch.setattr(eod, "OllamaClient", _FailingClient)
-    monkeypatch.setattr(eod, "load_config", lambda: {"llm": {"enabled": True, "base_url": "http://localhost:11434"}})
+    monkeypatch.setattr(eod, "load_config", lambda: {"llm-eod": {"enabled": True, "base_url": "http://localhost:11434"}})
     monkeypatch.setattr(eod, "read_principles_markdown", lambda config=None: "# Principles")
     monkeypatch.setattr(
         eod,

@@ -92,3 +92,86 @@ def test_eod_prompt_handles_empty_item_text() -> None:
     )
     assert "Item_text:\n(empty)" in prompt.user_prompt
     assert "No principles file available." in prompt.user_prompt
+
+
+# ── Prompt preferences tests ──────────────────────────────────────────
+
+
+_COMMON_KWARGS = {
+    "report_type": "weekly_digest",
+    "window_start": date(2026, 3, 3),
+    "window_end": date(2026, 3, 10),
+    "input_snapshot": {},
+    "features_snapshot": {},
+    "analysis_snapshot": {},
+    "principles_markdown": "## 1. Health\n",
+}
+
+
+def test_report_prompt_defaults_preserve_original_behavior() -> None:
+    """Without prompt_preferences the prompt should match the original analyst/sober/strict text."""
+    prompt = build_report_prompts(**_COMMON_KWARGS, prompt_preferences=None)
+    assert "reflective performance analyst" in prompt.system_prompt
+    assert "Keep it sober" in prompt.system_prompt
+    assert "Do not invent events" in prompt.system_prompt
+
+
+def test_report_prompt_coach_persona() -> None:
+    prefs = {"persona": "coach", "tone": "supportive", "strictness": "moderate"}
+    prompt = build_report_prompts(**_COMMON_KWARGS, prompt_preferences=prefs)
+    assert "supportive performance coach" in prompt.system_prompt
+    assert "warm, supportive tone" in prompt.system_prompt
+    assert "cautious inferences" in prompt.system_prompt
+    assert "reflective performance analyst" not in prompt.system_prompt
+
+
+def test_report_prompt_custom_nomenclature() -> None:
+    prefs = {
+        "nomenclature": {
+            "principles_label": "Values",
+            "kr_label": "Goals",
+            "dci_label": "Journal",
+        }
+    }
+    prompt = build_report_prompts(**_COMMON_KWARGS, prompt_preferences=prefs)
+    assert "Values_and_Goals_markdown:" in prompt.user_prompt
+    assert "Journal retro free-text evidence" in prompt.user_prompt
+    assert "Assess alignment to values using evidence" in prompt.user_prompt
+    assert "Assess Goals progress" in prompt.user_prompt
+
+
+def test_report_prompt_preferences_change_fingerprint() -> None:
+    base = build_report_prompts(**_COMMON_KWARGS, prompt_preferences=None)
+    custom = build_report_prompts(
+        **_COMMON_KWARGS,
+        prompt_preferences={"persona": "accountability", "tone": "direct"},
+    )
+    assert base.prompt_version != custom.prompt_version
+
+
+def test_eod_prompt_custom_nomenclature() -> None:
+    prefs = {
+        "nomenclature": {
+            "principles_label": "Pillars",
+            "kr_label": "Commitments",
+        }
+    }
+    prompt = build_eod_relevance_prompt(
+        item_type="note",
+        item_text="Trained today",
+        principles_markdown="## 1. Health\n",
+        prompt_preferences=prefs,
+    )
+    assert "Pillars_and_Commitments_markdown:" in prompt.user_prompt
+    assert "relevant to any pillars or commitments" in prompt.user_prompt.lower()
+
+
+def test_eod_prompt_defaults_without_preferences() -> None:
+    prompt = build_eod_relevance_prompt(
+        item_type="note",
+        item_text="Ran 5k",
+        principles_markdown="## 1. Health\n",
+        prompt_preferences=None,
+    )
+    assert "Principles_and_OKRs_markdown:" in prompt.user_prompt
+    assert "principles/OKRs" in prompt.system_prompt

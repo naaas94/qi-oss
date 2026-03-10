@@ -8,6 +8,7 @@ from typing import Any
 from qi.config import load_config, parse_principle_names, read_principles_markdown
 from qi.db import save_llm_run
 from qi.llm.client import LLMClientError, OllamaClient
+from qi.utils.llm import ns_to_ms
 from qi.llm.prompts import build_report_prompts
 from qi.llm.render import render_narrative_markdown
 from qi.llm.validate import NarrativeSynthesisResult, synthesize_with_validation
@@ -27,7 +28,7 @@ def synthesize_report_narrative(
 ) -> tuple[str | None, dict[str, Any]]:
     """Synthesize narrative markdown and metadata for a report."""
     config = load_config()
-    llm_cfg = config.get("llm", {})
+    llm_cfg = config.get("llm-report", {})
     enabled = bool(llm_cfg.get("enabled", False)) and not force_disable
     metadata: dict[str, Any] = {
         "llm_enabled": enabled,
@@ -54,9 +55,10 @@ def synthesize_report_narrative(
         principles_markdown=principles_markdown,
         daily_series=daily_series,
         digests=digests,
+        prompt_preferences=config.get("prompt_preferences"),
     )
 
-    # Timeout for the LLM call; config in ~/.qi/config.toml [llm] timeout_seconds. Use 0 for no timeout (slow local models).
+    # Timeout for the LLM call; config in ~/.qi/config.toml [llm-report] timeout_seconds. Use 0 for no timeout (slow local models).
     timeout_seconds = llm_cfg.get("timeout_seconds", 120)
     if isinstance(timeout_seconds, (int, float)):
         timeout_seconds = int(timeout_seconds)
@@ -69,7 +71,8 @@ def synthesize_report_narrative(
     think = llm_cfg.get("think", False)
     if not isinstance(think, bool):
         think = False
-    model_name = str(llm_cfg.get("model", "qwen3:30b"))
+    model_name = str(llm_cfg.get("model", "qwen3.5:27b"))
+    max_tokens = int(llm_cfg.get("max_tokens", 8192))
 
     client = OllamaClient(
         base_url=str(llm_cfg.get("base_url", "http://localhost:11434")),
@@ -86,9 +89,10 @@ def synthesize_report_narrative(
         result: NarrativeSynthesisResult = synthesize_with_validation(
             client=client,
             model=model_name,
-            temperature=float(llm_cfg.get("temperature", 0.4)),
+            temperature=float(llm_cfg.get("temperature", 0.3)),
             think=think,
             prompts=prompts,
+            max_tokens=max_tokens,
         )
     finally:
         close = getattr(client, "close", None)
@@ -140,10 +144,10 @@ def _persist_llm_runs(
                 "done_reason": response.done_reason if response else None,
                 "prompt_tokens": response.prompt_eval_count if response else None,
                 "completion_tokens": response.eval_count if response else None,
-                "total_duration_ms": _ns_to_ms(response.total_duration) if response else None,
-                "load_duration_ms": _ns_to_ms(response.load_duration) if response else None,
-                "prompt_eval_duration_ms": _ns_to_ms(response.prompt_eval_duration) if response else None,
-                "eval_duration_ms": _ns_to_ms(response.eval_duration) if response else None,
+                "total_duration_ms": ns_to_ms(response.total_duration) if response else None,
+                "load_duration_ms": ns_to_ms(response.load_duration) if response else None,
+                "prompt_eval_duration_ms": ns_to_ms(response.prompt_eval_duration) if response else None,
+                "eval_duration_ms": ns_to_ms(response.eval_duration) if response else None,
                 "validation_passed": int(trace.validation_passed),
                 "validation_error": trace.validation_error,
                 "error": trace.error,
@@ -152,10 +156,3 @@ def _persist_llm_runs(
         if run_id:
             run_ids.append(run_id)
     return run_ids
-
-
-def _ns_to_ms(value: int | None) -> int | None:
-    """Convert nanoseconds to milliseconds."""
-    if value is None:
-        return None
-    return int(value / 1_000_000)

@@ -34,7 +34,7 @@ def test_synthesis_uses_config_overrides(monkeypatch) -> None:
     monkeypatch.setattr(
         "qi.llm.synthesis.load_config",
         lambda: {
-            "llm": {
+            "llm-report": {
                 "enabled": True,
                 "base_url": "http://example-ollama:11434",
                 "timeout_seconds": 10,  # should normalize to min 60
@@ -74,6 +74,7 @@ def test_synthesis_uses_config_overrides(monkeypatch) -> None:
         temperature: float,
         think: bool | None,
         prompts: PromptPackage,  # noqa: ARG001 - signature compatibility
+        max_tokens: int = 8192,
     ) -> NarrativeSynthesisResult:
         captured["model"] = model
         captured["temperature"] = temperature
@@ -114,7 +115,7 @@ def test_synthesis_gracefully_degrades_when_readiness_check_fails(monkeypatch) -
     """Readiness check failures should not crash report generation."""
     monkeypatch.setattr(
         "qi.llm.synthesis.load_config",
-        lambda: {"llm": {"enabled": True}},
+        lambda: {"llm-report": {"enabled": True}},
     )
     monkeypatch.setattr("qi.llm.synthesis.read_principles_markdown", lambda _config: None)
     monkeypatch.setattr(
@@ -153,7 +154,7 @@ def test_synthesis_returns_none_when_validation_or_request_fails(monkeypatch) ->
     """Failed validation/request should return None narrative with metadata."""
     monkeypatch.setattr(
         "qi.llm.synthesis.load_config",
-        lambda: {"llm": {"enabled": True, "model": "qwen3:30b"}},
+        lambda: {"llm-report": {"enabled": True, "model": "qwen3:30b"}},
     )
     monkeypatch.setattr("qi.llm.synthesis.read_principles_markdown", lambda _config: None)
     monkeypatch.setattr(
@@ -276,7 +277,7 @@ def test_synthesis_closes_client_after_successful_path(monkeypatch) -> None:
     """Client close should run even when synthesis completes."""
     closed: dict[str, bool] = {"value": False}
 
-    monkeypatch.setattr("qi.llm.synthesis.load_config", lambda: {"llm": {"enabled": True}})
+    monkeypatch.setattr("qi.llm.synthesis.load_config", lambda: {"llm-report": {"enabled": True}})
     monkeypatch.setattr("qi.llm.synthesis.read_principles_markdown", lambda _config: None)
     monkeypatch.setattr(
         "qi.llm.synthesis.build_report_prompts",
@@ -326,7 +327,7 @@ def test_synthesis_closes_client_after_readiness_failure(monkeypatch) -> None:
     """Client close should run even when readiness fails early."""
     closed: dict[str, bool] = {"value": False}
 
-    monkeypatch.setattr("qi.llm.synthesis.load_config", lambda: {"llm": {"enabled": True}})
+    monkeypatch.setattr("qi.llm.synthesis.load_config", lambda: {"llm-report": {"enabled": True}})
     monkeypatch.setattr("qi.llm.synthesis.read_principles_markdown", lambda _config: None)
     monkeypatch.setattr(
         "qi.llm.synthesis.build_report_prompts",

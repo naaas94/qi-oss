@@ -45,8 +45,8 @@ dev = [
 qi = "qi.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/your-org/qi"
-Repository = "https://github.com/your-org/qi"
+Homepage = "https://github.com/qi-oss/qi"
+Repository = "https://github.com/qi-oss/qi"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -52,10 +52,6 @@ Retrospectives, observability, adjustment.
 """
 
 DEFAULT_CONFIG = {
-    "general": {
-        "week_start_day": "monday",
-        "timezone": "local",
-    },
     "dci": {
         "quick_mode_fields": ["energy", "mood", "sleep"],
     },
@@ -68,16 +64,38 @@ DEFAULT_CONFIG = {
     "snr": {
         "qc_db_path": "",  # Path to QuickCapture DB (leave empty if not using external QC)
     },
-    "llm": {
+    "llm-report": {
         "enabled": True,
-        "model": "qwen3:30b",
-        "eod_model": "qwen3:8b",
+        "model": "qwen3.5:27b",
         "base_url": "http://localhost:11434",
-        "temperature": 0.4,
-        "eod_temperature": 0.3,
-        "eod_concurrency": 7,
+        "temperature": 0.3,
         "timeout_seconds": 1200,
         "principles_path": "principles.md",
+        "think": False,
+        "max_tokens": 8192,
+    },
+    "llm-eod": {
+        "enabled": True,
+        "model": "qwen3.5:9b",
+        "base_url": "http://localhost:11434",
+        "temperature": 0.3,
+        "timeout_seconds": 1200,
+        "concurrency": 7,
+        "principles_path": "principles.md",
+        "think": False,
+        "max_tokens": 8192,
+    },
+    "prompt_preferences": {
+        "persona": "analyst",
+        "tone": "sober",
+        "strictness": "strict",
+        "nomenclature": {
+            "principles_label": "Principles",
+            "kr_label": "OKRs",
+            "dci_label": "Daily Check-In",
+            "win_label": "Win",
+            "friction_label": "Friction",
+        },
     },
 }
 
@@ -104,6 +122,23 @@ def load_config() -> dict[str, Any]:
             merged[key].update(value)
         else:
             merged[key] = value
+
+    # Backward compatibility: map legacy [llm] into llm-report and llm-eod
+    if "llm" in merged and isinstance(merged["llm"], dict):
+        old = merged["llm"]
+        report = merged.setdefault("llm-report", copy.deepcopy(DEFAULT_CONFIG["llm-report"]))
+        for k in ("enabled", "model", "base_url", "temperature", "timeout_seconds", "principles_path", "think"):
+            if k in old:
+                report[k] = old[k]
+        if "max_tokens" in old:
+            report["max_tokens"] = old["max_tokens"]
+        eod = merged.setdefault("llm-eod", copy.deepcopy(DEFAULT_CONFIG["llm-eod"]))
+        eod["model"] = old.get("eod_model") or old.get("model", eod["model"])
+        eod["temperature"] = old.get("eod_temperature", old.get("temperature", eod["temperature"]))
+        eod["concurrency"] = old.get("eod_concurrency", eod["concurrency"])
+        for k in ("enabled", "base_url", "timeout_seconds", "principles_path", "think", "max_tokens"):
+            if k in old:
+                eod[k] = old[k]
 
     return merged
 
@@ -140,12 +175,16 @@ def get_snr_qc_db_path() -> Path | None:
 def get_principles_path(config: dict[str, Any] | None = None) -> Path:
     """Resolve principles markdown path from config."""
     cfg = config or load_config()
-    llm_cfg = cfg.get("llm", {})
-    path_str = llm_cfg.get("principles_path", "principles.md")
-    path = Path(path_str).expanduser()
-    if not path.is_absolute():
-        path = QI_HOME / path
-    return path
+    for section in ("llm-report", "llm-eod", "llm"):
+        llm_cfg = cfg.get(section, {})
+        if isinstance(llm_cfg, dict):
+            path_str = llm_cfg.get("principles_path", "principles.md")
+            if path_str:
+                path = Path(path_str).expanduser()
+                if not path.is_absolute():
+                    path = QI_HOME / path
+                return path
+    return QI_HOME / "principles.md"
 
 
 def ensure_principles_file(config: dict[str, Any] | None = None) -> tuple[Path, bool]:

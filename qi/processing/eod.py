@@ -21,6 +21,7 @@ from qi.db import (
 from qi.llm.client import LLMClientError, OllamaClient
 from qi.llm.prompts import build_eod_relevance_prompt
 from qi.models import DCI, ImportedNote, RelevanceDigest
+from qi.utils.llm import ns_to_ms
 
 
 @dataclass
@@ -41,7 +42,8 @@ def run_eod_batch(target_date: date | None = None) -> EodBatchResult:
 
 async def _run_eod_batch_async(target_date: date | None = None) -> EodBatchResult:
     config = load_config()
-    llm_cfg = config.get("llm", {})
+    llm_cfg = config.get("llm-eod", {})
+    prompt_prefs = config.get("prompt_preferences")
     if not bool(llm_cfg.get("enabled", False)):
         return EodBatchResult(skipped=1, error_messages=["LLM is disabled in configuration."])
 
@@ -57,13 +59,14 @@ async def _run_eod_batch_async(target_date: date | None = None) -> EodBatchResul
     else:
         timeout_seconds = max(60, timeout_seconds)
 
-    model = str(llm_cfg.get("eod_model") or llm_cfg.get("model", "qwen3:8b"))
-    temperature = float(llm_cfg.get("eod_temperature", 0.3))
-    concurrency = int(llm_cfg.get("eod_concurrency", 3))
+    model = str(llm_cfg.get("model", "qwen3.5:9b"))
+    temperature = float(llm_cfg.get("temperature", 0.3))
+    concurrency = int(llm_cfg.get("concurrency", 7))
     concurrency = max(1, concurrency)
     think = llm_cfg.get("think", False)
     if not isinstance(think, bool):
         think = False
+    max_tokens = int(llm_cfg.get("max_tokens", 8192))
 
     with OllamaClient(
         base_url=str(llm_cfg.get("base_url", "http://localhost:11434")),
@@ -97,10 +100,12 @@ async def _run_eod_batch_async(target_date: date | None = None) -> EodBatchResul
                     model=model,
                     temperature=temperature,
                     think=think,
+                    max_tokens=max_tokens,
                     item_type=item["item_type"],
                     item_id=item["item_id"],
                     payload=item["payload"],
                     principles_markdown=principles_md,
+                    prompt_preferences=prompt_prefs,
                     result=result,
                 )
             )
@@ -117,10 +122,12 @@ async def _process_item(
     model: str,
     temperature: float,
     think: bool,
+    max_tokens: int,
     item_type: str,
     item_id: int,
     payload: ImportedNote | DCI,
     principles_markdown: str,
+    prompt_preferences: dict[str, Any] | None = None,
     result: EodBatchResult,
 ) -> None:
     async with semaphore:
@@ -130,6 +137,7 @@ async def _process_item(
             item_type=item_type,
             item_text=item_text,
             principles_markdown=principles_markdown,
+            prompt_preferences=prompt_preferences,
         )
         started = time.perf_counter()
         try:
@@ -140,6 +148,7 @@ async def _process_item(
                 user_prompt=prompts.user_prompt,
                 temperature=temperature,
                 think=think,
+                max_tokens=max_tokens,
             )
             parsed = _parse_relevance_output(response.content)
         except Exception as exc:  # noqa: BLE001
@@ -293,12 +302,6 @@ def _get_source_ts(*, item_type: str, payload: ImportedNote | DCI) -> datetime:
     return datetime.combine(dci.date, datetime.min.time())
 
 
-def _ns_to_ms(value: int | None) -> int | None:
-    if value is None:
-        return None
-    return int(value / 1_000_000)
-
-
 def _sum_tokens(prompt_tokens: int | None, completion_tokens: int | None) -> int | None:
     if prompt_tokens is None and completion_tokens is None:
         return None
@@ -333,10 +336,10 @@ def _build_llm_run_record(
         "done_reason": response.done_reason if response else None,
         "prompt_tokens": response.prompt_eval_count if response else None,
         "completion_tokens": response.eval_count if response else None,
-        "total_duration_ms": _ns_to_ms(response.total_duration) if response else None,
-        "load_duration_ms": _ns_to_ms(response.load_duration) if response else None,
-        "prompt_eval_duration_ms": _ns_to_ms(response.prompt_eval_duration) if response else None,
-        "eval_duration_ms": _ns_to_ms(response.eval_duration) if response else None,
+        "total_duration_ms": ns_to_ms(response.total_duration) if response else None,
+        "load_duration_ms": ns_to_ms(response.load_duration) if response else None,
+        "prompt_eval_duration_ms": ns_to_ms(response.prompt_eval_duration) if response else None,
+        "eval_duration_ms": ns_to_ms(response.eval_duration) if response else None,
         "validation_passed": int(validation_passed),
         "validation_error": validation_error,
         "error": error,

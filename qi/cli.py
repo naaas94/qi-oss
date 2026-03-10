@@ -23,7 +23,16 @@ from qi.config import (
     get_snr_qc_db_path,
     save_config,
 )
-from qi.db import init_db, save_dci, get_dci, get_latest_residual, save_imported_note, _row_to_dci
+from qi.db import (
+    ReadinessError,
+    check_db_writable,
+    init_db,
+    save_dci,
+    get_dci,
+    get_latest_residual,
+    save_imported_note,
+    row_to_dci,
+)
 from qi.utils.time import parse_date
 
 app = typer.Typer(
@@ -48,6 +57,18 @@ def _parse_date_or_exit(value: str, option_name: str) -> date:
         return parse_date(value, field_name=option_name)
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1)
+
+
+def _parse_since_days(value: str) -> int:
+    """Parse --since value (e.g. '7d') to number of days. Exits with message on error."""
+    if not value.endswith("d"):
+        console.print(f"[red]Invalid --since format: {value}. Use e.g., '7d'[/red]")
+        raise typer.Exit(1)
+    try:
+        return int(value[:-1])
+    except ValueError:
+        console.print(f"[red]Invalid --since format: {value}. Use e.g., '7d'[/red]")
         raise typer.Exit(1)
 
 
@@ -133,7 +154,6 @@ def dci(
 ):
     """Interactive daily check-in."""
     from qi.capture.dci import prompt_dci, prompt_dci_quick
-    from qi.db import ReadinessError, check_db_writable
 
     try:
         check_db_writable()
@@ -172,19 +192,7 @@ def import_snr(
     """Import notes from SnR QC JSONL export."""
     from qi.capture.snr_import import import_snr_jsonl
 
-    # Parse since parameter
-    since_days = None
-    if since:
-        if since.endswith("d"):
-            try:
-                since_days = int(since[:-1])
-            except ValueError:
-                console.print(f"[red]Invalid --since format: {since}. Use e.g., '7d'[/red]")
-                raise typer.Exit(1)
-        else:
-            console.print(f"[red]Invalid --since format: {since}. Use e.g., '7d'[/red]")
-            raise typer.Exit(1)
-
+    since_days = _parse_since_days(since) if since else None
     try:
         imported, skipped = import_snr_jsonl(file_path, since_days)
         console.print(f"\n[green]Import complete![/green]")
@@ -227,16 +235,8 @@ def import_snr_db(
         start_date, end_date = get_week_bounds(week_date)
         console.print(f"[cyan]Importing week: {start_date} to {end_date}[/cyan]")
     elif since:
-        if since.endswith("d"):
-            try:
-                since_days = int(since[:-1])
-                console.print(f"[cyan]Importing last {since_days} days[/cyan]")
-            except ValueError:
-                console.print(f"[red]Invalid --since format: {since}. Use e.g., '7d'[/red]")
-                raise typer.Exit(1)
-        else:
-            console.print(f"[red]Invalid --since format: {since}. Use e.g., '7d'[/red]")
-            raise typer.Exit(1)
+        since_days = _parse_since_days(since)
+        console.print(f"[cyan]Importing last {since_days} days[/cyan]")
     elif start or end:
         if start:
             start_date = _parse_date_or_exit(start, "--start")
@@ -420,12 +420,10 @@ def export(
         with open(output, "w", encoding="utf-8") as f:
             for table in EXPORT_TABLES:
                 try:
-                    if table not in EXPORT_TABLES:
-                        raise ValueError(f"Unsupported table: {table}")
                     if table == "dci":
                         cursor = conn.execute("SELECT * FROM dci")
                         for row in cursor:
-                            dci = _row_to_dci(row)
+                            dci = row_to_dci(row)
                             record = {
                                 "id": row["id"],
                                 "date": dci.date.isoformat(),
@@ -456,6 +454,14 @@ def export(
                     console.print(f"[yellow]Warning: Could not export {table}: {e}[/yellow]")
 
     console.print(f"[green]Exported to {output}[/green]")
+
+
+@app.command()
+def wizard():
+    """Interactive setup wizard — walk through all QI configuration."""
+    from qi.wizard import run_wizard
+
+    run_wizard(console)
 
 
 @app.command()
@@ -520,12 +526,9 @@ def report_weekly(
 
     try:
         report = generate_weekly_digest(target_date, force_disable_llm=no_llm, force_regenerate=force)
-    except Exception as exc:  # noqa: BLE001
-        from qi.db import ReadinessError
-        if isinstance(exc, ReadinessError):
-            console.print(f"[red]{exc}[/red]")
-            raise typer.Exit(1)
-        raise
+    except ReadinessError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1)
     llm_meta = report.output_json.get("llm", {})
     if llm_meta.get("error"):
         console.print(f"[yellow]LLM narrative skipped: {llm_meta['error']}[/yellow]")
@@ -561,12 +564,9 @@ def report_monthly(
 
     try:
         report = generate_monthly_dossier(target_date, force_disable_llm=no_llm, force_regenerate=force)
-    except Exception as exc:  # noqa: BLE001
-        from qi.db import ReadinessError
-        if isinstance(exc, ReadinessError):
-            console.print(f"[red]{exc}[/red]")
-            raise typer.Exit(1)
-        raise
+    except ReadinessError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1)
     llm_meta = report.output_json.get("llm", {})
     if llm_meta.get("error"):
         console.print(f"[yellow]LLM narrative skipped: {llm_meta['error']}[/yellow]")

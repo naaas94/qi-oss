@@ -5,8 +5,6 @@ from datetime import date
 from qi.config import ensure_principles_file, load_config
 from qi.db import (
     check_db_writable,
-    delete_artifact_for_window,
-    get_artifact_for_window,
     get_dci_range,
     get_events_in_range,
     get_relevance_digests_in_range,
@@ -15,6 +13,7 @@ from qi.db import (
     save_artifact,
 )
 from qi.llm.synthesis import synthesize_report_narrative
+from qi.reporting.common import resolve_existing_artifact
 from qi.models import Artifact
 from qi.processing.features import compute_daily_series, compute_features, get_trend
 from qi.reporting.render import (
@@ -38,16 +37,13 @@ def generate_monthly_dossier(
     check_db_writable()
     ensure_principles_file(load_config())
     month_start, month_end = get_month_bounds(target_date)
-    
-    # Idempotency guard (skip when --force)
-    existing_artifact = get_artifact_for_window("monthly_dossier", month_start, month_end)
-    if existing_artifact:
-        if force_regenerate:
-            delete_artifact_for_window("monthly_dossier", month_start, month_end)
-        else:
-            from rich.console import Console
-            Console().print(f"[yellow]Warning: Monthly dossier for {month_start.strftime('%B %Y')} already exists. Returning existing artifact.[/yellow]")
-            return existing_artifact
+    existing_artifact = resolve_existing_artifact(
+        "monthly_dossier", month_start, month_end, force_regenerate
+    )
+    if existing_artifact is not None:
+        from rich.console import Console
+        Console().print(f"[yellow]Warning: Monthly dossier for {month_start.strftime('%B %Y')} already exists. Returning existing artifact.[/yellow]")
+        return existing_artifact
 
     dcis = get_dci_range(month_start, month_end)
     events = get_events_in_range(month_start, month_end)

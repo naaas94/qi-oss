@@ -174,7 +174,7 @@ def get_dci(target_date: date) -> DCI | None:
         if not row:
             return None
 
-        return _row_to_dci(row)
+        return row_to_dci(row)
 
 
 def get_dci_range(start_date: date, end_date: date) -> list[DCI]:
@@ -184,10 +184,10 @@ def get_dci_range(start_date: date, end_date: date) -> list[DCI]:
             "SELECT * FROM dci WHERE date >= ? AND date <= ? ORDER BY date",
             (start_date.isoformat(), end_date.isoformat()),
         )
-        return [_row_to_dci(row) for row in cursor.fetchall()]
+        return [row_to_dci(row) for row in cursor.fetchall()]
 
 
-def _row_to_dci(row: sqlite3.Row) -> DCI:
+def row_to_dci(row: sqlite3.Row) -> DCI:
     """Convert a database row to a DCI model. Metrics are read from the metrics JSON column."""
     residual = json.loads(row["residual"]) if row["residual"] else []
     metrics = json.loads(row["metrics"]) if "metrics" in row.keys() and row["metrics"] else {}
@@ -358,7 +358,7 @@ def get_unprocessed_dcis_for_relevance(
             )
         results = []
         for row in cursor.fetchall():
-            dci = _row_to_dci(row)
+            dci = row_to_dci(row)
             results.append((row["id"], dci))
         return results
 

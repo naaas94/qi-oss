@@ -61,6 +61,7 @@ def synthesize_with_validation(
     temperature: float,
     think: bool | None,
     prompts: PromptPackage,
+    max_tokens: int = 8192,
 ) -> NarrativeSynthesisResult:
     """Call LLM, validate output, retry once with repair prompt when needed."""
     traces: list[LLMRunTrace] = []
@@ -73,6 +74,7 @@ def synthesize_with_validation(
             user_prompt=prompts.user_prompt,
             temperature=temperature,
             think=think,
+            max_tokens=max_tokens,
         )
     except LLMClientError as exc:
         traces.append(
@@ -124,6 +126,7 @@ def synthesize_with_validation(
             user_prompt=repair_prompt,
             temperature=temperature,
             think=think,
+            max_tokens=max_tokens,
         )
     except LLMClientError as exc:
         traces.append(

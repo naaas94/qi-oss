@@ -5,8 +5,6 @@ from datetime import date
 from qi.config import ensure_principles_file, load_config
 from qi.db import (
     check_db_writable,
-    delete_artifact_for_window,
-    get_artifact_for_window,
     get_dci_range,
     get_events_in_range,
     get_relevance_digests_in_range,
@@ -14,6 +12,7 @@ from qi.db import (
     save_artifact,
 )
 from qi.llm.synthesis import synthesize_report_narrative
+from qi.reporting.common import resolve_existing_artifact
 from qi.models import Artifact
 from qi.processing.features import compute_daily_series, compute_delta, compute_features
 from qi.reporting.render import (
@@ -38,16 +37,13 @@ def generate_weekly_digest(
     check_db_writable()
     ensure_principles_file(load_config())
     week_start, week_end = get_week_bounds(target_date)
-    
-    # Idempotency guard (skip when --force)
-    existing_artifact = get_artifact_for_window("weekly_digest", week_start, week_end)
-    if existing_artifact:
-        if force_regenerate:
-            delete_artifact_for_window("weekly_digest", week_start, week_end)
-        else:
-            from rich.console import Console
-            Console().print(f"[yellow]Warning: Weekly digest for {week_start} already exists. Returning existing artifact.[/yellow]")
-            return existing_artifact
+    existing_artifact = resolve_existing_artifact(
+        "weekly_digest", week_start, week_end, force_regenerate
+    )
+    if existing_artifact is not None:
+        from rich.console import Console
+        Console().print(f"[yellow]Warning: Weekly digest for {week_start} already exists. Returning existing artifact.[/yellow]")
+        return existing_artifact
 
     prev_start, prev_end = get_previous_week_bounds(target_date)
     

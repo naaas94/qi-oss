@@ -83,6 +83,7 @@ class OllamaClient:
         user_prompt: str,
         temperature: float = 0.4,
         think: bool | None = None,
+        max_tokens: int = 8192,
     ) -> LLMResponse:
         """Generate a response using Ollama's chat API."""
         payload: dict[str, Any] = {
@@ -93,7 +94,7 @@ class OllamaClient:
             ],
             "stream": False,
             "format": "json",
-            "options": {"temperature": temperature, "num_predict": 8192},
+            "options": {"temperature": temperature, "num_predict": max_tokens},
         }
         if think is not None:
             payload["think"] = think

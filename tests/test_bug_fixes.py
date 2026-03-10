@@ -97,7 +97,7 @@ def test_synthesis_uses_consistent_default_model(monkeypatch) -> None:
 
     monkeypatch.setattr(
         "qi.llm.synthesis.load_config",
-        lambda: {"llm": {"enabled": True, "base_url": "http://localhost:11434"}},
+        lambda: {"llm-report": {"enabled": True, "base_url": "http://localhost:11434"}},
     )
     monkeypatch.setattr("qi.llm.synthesis.read_principles_markdown", lambda _config: None)
     monkeypatch.setattr(
@@ -126,6 +126,7 @@ def test_synthesis_uses_consistent_default_model(monkeypatch) -> None:
         temperature: float,  # noqa: ARG001 - signature compatibility
         think: bool | None,  # noqa: ARG001 - signature compatibility
         prompts: PromptPackage,  # noqa: ARG001 - signature compatibility
+        max_tokens: int = 8192,  # noqa: ARG001 - signature compatibility
     ) -> NarrativeSynthesisResult:
         captured["inference_model"] = model
         return NarrativeSynthesisResult(
@@ -161,8 +162,8 @@ def test_synthesis_uses_consistent_default_model(monkeypatch) -> None:
 
     assert narrative is None
     assert metadata["llm_skipped_reason"] == "validation_or_request_failure"
-    assert captured["inference_model"] == "qwen3:30b"
-    assert captured["configured_model"] == "qwen3:30b"
+    assert captured["inference_model"] == "qwen3.5:27b"
+    assert captured["configured_model"] == "qwen3.5:27b"
 
 
 def test_import_snr_jsonl_uses_single_db_connection(tmp_path: Path, monkeypatch) -> None:

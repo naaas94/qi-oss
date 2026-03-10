@@ -311,7 +311,7 @@ QI reuses QC's parsed metadata rather than re-running LLM inference on notes. Th
 
 ## Desktop Shortcut (Windows)
 
-Create a shortcut that runs `qi dci`: use **New → Shortcut**, set target to your Python or `qi` executable with argument `dci`, or run `qi dci` from a batch file / terminal. Alternatively, pin a shortcut to `run_dci.bat` (in the repo) after installing QI.
+Create a shortcut that runs `qi dci`: use **New → Shortcut**, set target to your Python or `qi` executable with argument `dci`, or run `qi dci` from a batch file or terminal.
 
 ## Development
 

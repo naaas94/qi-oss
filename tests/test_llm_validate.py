@@ -67,6 +67,7 @@ def test_synthesize_with_validation_repair_loop_success() -> None:
             user_prompt: str,
             temperature: float,
             think: bool | None,
+            max_tokens: int = 8192,
         ) -> LLMResponse:
             calls.append(
                 {
@@ -118,6 +119,7 @@ def test_synthesize_with_validation_double_failure_returns_fallback_error() -> N
             user_prompt: str,  # noqa: ARG002 - signature compatibility
             temperature: float,  # noqa: ARG002 - signature compatibility
             think: bool | None,  # noqa: ARG002 - signature compatibility
+            max_tokens: int = 8192,  # noqa: ARG002 - signature compatibility
         ) -> LLMResponse:
             return responses.pop(0)
 

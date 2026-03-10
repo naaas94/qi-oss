@@ -33,10 +33,11 @@ class TestLoadConfig:
         assert not (temp_config_home / "config.toml").exists()
         config = config_module.load_config()
         assert config is not None
-        assert config["general"]["week_start_day"] == "monday"
         assert config["dci"]["quick_mode_fields"] == ["energy", "mood", "sleep"]
-        assert config["llm"]["model"] == "qwen3:30b"
-        assert config["llm"]["enabled"] is True
+        assert config["llm-report"]["model"] == "qwen3.5:27b"
+        assert config["llm-report"]["enabled"] is True
+        assert config["llm-eod"]["model"] == "qwen3.5:9b"
+        assert config["llm-eod"]["concurrency"] == 7
         assert "habit_1" in config["dci_metrics"]
         assert config["dci_metrics"]["habit_1"]["aggregate"] == "count"
 
@@ -44,18 +45,35 @@ class TestLoadConfig:
         """Existing config.toml is merged with defaults (shallow merge per top-level key)."""
         config_toml = temp_config_home / "config.toml"
         config_toml.write_text(
-            "[llm]\n"
+            "[llm-report]\n"
             "model = \"custom:7b\"\n"
             "enabled = false\n",
             encoding="utf-8",
         )
         config_module.load_config.cache_clear()
         config = config_module.load_config()
-        assert config["llm"]["model"] == "custom:7b"
-        assert config["llm"]["enabled"] is False
+        assert config["llm-report"]["model"] == "custom:7b"
+        assert config["llm-report"]["enabled"] is False
         # Unmentioned keys still from defaults
-        assert config["llm"]["base_url"] == "http://localhost:11434"
-        assert config["general"]["week_start_day"] == "monday"
+        assert config["llm-report"]["base_url"] == "http://localhost:11434"
+
+    def test_legacy_llm_section_maps_to_llm_report_and_llm_eod(self, temp_config_home):
+        """Legacy [llm] is mapped into llm-report and llm-eod for backward compatibility."""
+        config_toml = temp_config_home / "config.toml"
+        config_toml.write_text(
+            "[llm]\n"
+            "model = \"legacy:7b\"\n"
+            "eod_model = \"eod:3b\"\n"
+            "enabled = false\n"
+            "eod_concurrency = 5\n",
+            encoding="utf-8",
+        )
+        config_module.load_config.cache_clear()
+        config = config_module.load_config()
+        assert config["llm-report"]["model"] == "legacy:7b"
+        assert config["llm-report"]["enabled"] is False
+        assert config["llm-eod"]["model"] == "eod:3b"
+        assert config["llm-eod"]["concurrency"] == 5
 
     def test_dci_metrics_structure_in_default(self, temp_config_home):
         """Default dci_metrics has expected keys and types."""
@@ -104,13 +122,13 @@ class TestGetConfigValue:
 
     def test_dot_path_returns_value(self, temp_config_home):
         """get_config_value resolves dot-separated keys."""
-        val = config_module.get_config_value("llm.model")
-        assert val == "qwen3:30b"
+        val = config_module.get_config_value("llm-report.model")
+        assert val == "qwen3.5:27b"
 
     def test_missing_key_returns_default(self, temp_config_home):
         """get_config_value returns default for missing key."""
         assert config_module.get_config_value("nonexistent.key", "fallback") == "fallback"
-        assert config_module.get_config_value("llm.missing_key", 42) == 42
+        assert config_module.get_config_value("llm-report.missing_key", 42) == 42
 
 
 class TestGetPrinciplesPath:
@@ -124,7 +142,7 @@ class TestGetPrinciplesPath:
     def test_absolute_path_unchanged(self, temp_config_home):
         """Absolute principles_path in config is used as-is (expanduser only)."""
         config = config_module.load_config()
-        config["llm"] = {**config["llm"], "principles_path": "/absolute/principles.md"}
+        config["llm-report"] = {**config["llm-report"], "principles_path": "/absolute/principles.md"}
         path = config_module.get_principles_path(config)
         assert path.is_absolute()
         assert path.name == "principles.md"

@@ -7,6 +7,19 @@ and this project does not use semantic versioning for now.
 
 ### [Unreleased]
 
+## 2026-03-10
+
+### Added
+
+- **Terminal setup wizard**: New `qi wizard` command runs an interactive 6-step setup that performs the same bootstrap as `qi init` (home dir, database, config, principles) and then walks through: (1) Dependencies — Ollama reachability, model selection for report and EOD, or disable LLM; (2) Data location and optional SnR QuickCapture DB path; (3) Core quick-mode fields and custom DCI metrics (add/remove); (4) Principles and OKRs — ensure file, then optionally generate with LLM, edit in `$EDITOR`, or keep template; (5) Usage intent (DCI only / weekly reports / full pipeline) with tailored next-steps; (6) Prompt personalization — AI persona (analyst, coach, journal, accountability), tone, evidence strictness, and optional nomenclature (Principles, OKRs, Daily Check-In, Win/Friction). Implemented in `qi/wizard.py` with Rich panels and menus.
+- **Prompt preferences in config**: New `[prompt_preferences]` section in `~/.qi/config.toml` with `persona`, `tone`, `strictness`, and `nomenclature` (labels for principles, KRs, DCI, win/friction). Defaults preserve the original reflective-analyst, sober, strict behaviour when absent.
+- **Configurable report and EOD prompts**: `build_report_prompts()` and `build_eod_relevance_prompt()` in `qi/llm/prompts.py` accept an optional `prompt_preferences` dict and build system/user text from persona, tone, strictness, and nomenclature maps. Synthesis and EOD pipelines pass config preferences through; existing configs remain unchanged (backward compatible).
+- **Wizard and prompt tests**: New `tests/test_wizard.py` (17 tests) for wizard helpers, each step (dependencies, data sources, metrics, principles, usage, prompt persona), and full run with mocked steps. New tests in `tests/test_llm_prompts.py` for default behaviour, coach persona, custom nomenclature, and fingerprint changes with preferences.
+
+### Changed
+
+- **Wizard bootstrap**: `qi wizard` calls `ensure_qi_home()`, `init_db()`, and ensures principles in step 4; config is written once at the end with all wizard choices, so `qi wizard` can be used as a first-time setup without running `qi init` separately.
+
 ## 2026-03-02
 
 ### Added
